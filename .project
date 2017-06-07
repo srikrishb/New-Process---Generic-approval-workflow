@@ -3,6 +3,7 @@
 	<name>New Process - Generic approval workflow</name>
 	<comment></comment>
 	<projects>
+		<project>Latest Project</project>
 	</projects>
 	<buildSpec>
 	</buildSpec>

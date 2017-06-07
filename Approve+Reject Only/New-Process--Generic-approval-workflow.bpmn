@@ -19,8 +19,6 @@
         <flowNodeRef>scripttask3</flowNodeRef>
         <flowNodeRef>servicetask6</flowNodeRef>
         <flowNodeRef>callactivity1</flowNodeRef>
-        <flowNodeRef>scripttask4</flowNodeRef>
-        <flowNodeRef>servicetask7</flowNodeRef>
       </lane>
     </laneSet>
     <startEvent id="startevent1" name="Start" activiti:initiator="startUser">
@@ -76,9 +74,9 @@
     <sequenceFlow id="flow41" sourceRef="servicetask3" targetRef="servicetask4"></sequenceFlow>
     <exclusiveGateway id="exclusivegateway2" name="Exclusive Gateway"></exclusiveGateway>
     <sequenceFlow id="flow25" name="rejected" sourceRef="exclusivegateway2" targetRef="servicetask6">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reject == true}]]></conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${!votingResult.votingResult}]]></conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow42" sourceRef="startevent1" targetRef="servicetask7"></sequenceFlow>
+    <sequenceFlow id="flow42" sourceRef="startevent1" targetRef="scripttask1"></sequenceFlow>
     <scriptTask id="scripttask1" name="Initialize process" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>/*Display contents of approvers to understand who the approvers are. */
 loggerComponent.info('Approvers are: ' + approvers)
@@ -102,22 +100,15 @@ loggerComponent.info('temp_count contains: ' + temp_count)
 
 /*temp_count = execution.getVariable(count)*/
 def int_temp_count = temp_count.toInteger()?temp_count.toInteger():0
-def setVariable_userExpression
 
 /*Proceed with below to start a loop */
 if (int_temp_count &lt; totalCount)
 {
-	if (count == -1)
-	{
-		loggerComponent.info('Assigned to the user as the approver has requested more information')
-		setVariable_userExpression = "user(" + startUser + ")"
-	}
-	else
-	{
-		execution.setVariable('approverName', approversList[int_temp_count].trim())
-		loggerComponent.info('approverName contains: ' + approverName)
-		setVariable_userExpression = "role(" + approverName + ")"
-	}
+	execution.setVariable('approverName', approversList[int_temp_count].trim())
+	loggerComponent.info('approverName contains: ' + approverName)
+	loggerComponent.info('int_temp_count contains: ' + int_temp_count)
+	execution.setVariable('count', int_temp_count)
+	loggerComponent.info('Count contains: ' + count)
 	execution.setVariable('nextApprover', 'true')
 }
 else
@@ -125,6 +116,7 @@ else
 	execution.setVariable('nextApprover', 'false')
 }
 
+def setVariable_userExpression = "role(" + approverName + ")"
 execution.setVariable('userExpression', setVariable_userExpression)
 loggerComponent.info('userExpression contains: ' + userExpression)
 loggerComponent.info('nextApprover contains: ' + nextApprover)</script>
@@ -136,24 +128,17 @@ loggerComponent.info('nextApprover contains: ' + nextApprover)</script>
     <scriptTask id="scripttask2" name="Increment Counter" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>def temp_count = execution.getVariable('count')
 loggerComponent.info('temp_count contains: ' + temp_count)
-def int_temp_count = temp_count.toInteger()?temp_count.toInteger():0
 
-if ( String.valueOf(approve) == 'true')
-{
-	int_temp_count = int_temp_count + 1
-	loggerComponent.info('int_temp_count contains: ' + int_temp_count)
-	execution.setVariable('count', int_temp_count)
-}
+def int_temp_count = temp_count.toInteger()?temp_count.toInteger():0
+int_temp_count = int_temp_count + 1
+loggerComponent.info('int_temp_count contains: ' + int_temp_count)
+execution.setVariable('count', int_temp_count)
 
 loggerComponent.info('Count: '+ count)
-loggerComponent.info('votingResult  contains: ' + votingResult)
-loggerComponent.info('votingResult.votingResult  contains: ' + votingResult.votingResult)
-loggerComponent.info('requestForMoreInfo  contains: ' + requestForMoreInfo)
-loggerComponent.info('approve  contains: ' + approve)
-loggerComponent.info('reject  contains: ' + reject)</script>
+loggerComponent.info('Hello')</script>
     </scriptTask>
     <sequenceFlow id="flow48" name="accepted" sourceRef="exclusivegateway2" targetRef="scripttask3">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approve == true}]]></conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${votingResult.votingResult}]]></conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow50" name="Pass to Approvers" sourceRef="exclusivegateway3" targetRef="callactivity1">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${nextApprover == true}]]></conditionExpression>
@@ -171,7 +156,7 @@ loggerComponent.info('Result: ' +votingResult.votingResult)</script>
         </activiti:field>
       </extensionElements>
     </serviceTask>
-    <callActivity id="callactivity1" name="Review Definition" calledElement="newVotingSubProcess">
+    <callActivity id="callactivity1" name="Review Definition" calledElement="votingSubProcess">
       <extensionElements>
         <activiti:in sourceExpression="${'Please review the '}${item.getConceptTypeName()}${'.'}" target="decisionInfo"></activiti:in>
         <activiti:in source="userExpression" target="voterUserExpression"></activiti:in>
@@ -185,9 +170,6 @@ loggerComponent.info('Result: ' +votingResult.votingResult)</script>
         <activiti:in source="activityFilter" target="activityFilter"></activiti:in>
         <activiti:in source="sendVotingActionEmails" target="sendActionEmail"></activiti:in>
         <activiti:out source="votingResult" target="votingResult"></activiti:out>
-        <activiti:out source="requestForMoreInfo" target="requestForMoreInfo"></activiti:out>
-        <activiti:out source="reject" target="reject"></activiti:out>
-        <activiti:out source="approve" target="approve"></activiti:out>
         <activiti:executionListener event="start" class="com.collibra.dgc.core.workflow.activiti.listener.SetActivityStreamListener">
           <activiti:field name="startOnStatusChangeFrom">
             <activiti:string><![CDATA[Accepted]]></activiti:string>
@@ -199,155 +181,113 @@ loggerComponent.info('Result: ' +votingResult.votingResult)</script>
       </extensionElements>
     </callActivity>
     <sequenceFlow id="flow54" sourceRef="callactivity1" targetRef="scripttask2"></sequenceFlow>
-    <scriptTask id="scripttask4" name="Request for more info" scriptFormat="groovy" activiti:autoStoreVariables="false">
-      <script>loggerComponent.info('Requested for more info')
-
-def temp_count = -1
-loggerComponent.info('temp_count contains: ' + temp_count)
-execution.setVariable('count', temp_count)
-
-loggerComponent.info('Count: '+ count)</script>
-    </scriptTask>
-    <sequenceFlow id="flow55" name="request for more info" sourceRef="exclusivegateway2" targetRef="scripttask4">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${requestForMoreInfo == true}]]></conditionExpression>
-    </sequenceFlow>
-    <serviceTask id="servicetask7" name="Mark as &quot;In Progress&quot;" activiti:class="com.collibra.dgc.core.workflow.activiti.delegate.ChangeStatusDelegate">
-      <extensionElements>
-        <activiti:field name="targetStatusId">
-          <activiti:string><![CDATA[00000000-0000-0000-0000-000000005019]]></activiti:string>
-        </activiti:field>
-      </extensionElements>
-    </serviceTask>
-    <sequenceFlow id="flow56" sourceRef="scripttask4" targetRef="servicetask7"></sequenceFlow>
-    <sequenceFlow id="flow57" sourceRef="servicetask7" targetRef="scripttask1"></sequenceFlow>
   </process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_Collaboration">
     <bpmndi:BPMNPlane bpmnElement="Collaboration" id="BPMNPlane_Collaboration">
       <bpmndi:BPMNShape bpmnElement="pool1" id="BPMNShape_pool1">
-        <omgdc:Bounds height="601.0" width="1351.0" x="30.0" y="20.0"></omgdc:Bounds>
+        <omgdc:Bounds height="461.0" width="1351.0" x="30.0" y="20.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="lane1" id="BPMNShape_lane1">
-        <omgdc:Bounds height="601.0" width="1331.0" x="50.0" y="20.0"></omgdc:Bounds>
+        <omgdc:Bounds height="461.0" width="1331.0" x="50.0" y="20.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="startevent1" id="BPMNShape_startevent1">
-        <omgdc:Bounds height="35.0" width="35.0" x="80.0" y="65.0"></omgdc:Bounds>
+        <omgdc:Bounds height="35.0" width="35.0" x="80.0" y="53.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="servicetask4" id="BPMNShape_servicetask4">
-        <omgdc:Bounds height="55.0" width="121.0" x="1176.0" y="263.0"></omgdc:Bounds>
+        <omgdc:Bounds height="55.0" width="121.0" x="900.0" y="180.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="endevent3" id="BPMNShape_endevent3">
-        <omgdc:Bounds height="35.0" width="35.0" x="1336.0" y="273.0"></omgdc:Bounds>
+        <omgdc:Bounds height="35.0" width="35.0" x="1130.0" y="190.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="servicetask5" id="BPMNShape_servicetask5">
-        <omgdc:Bounds height="55.0" width="121.0" x="1176.0" y="55.0"></omgdc:Bounds>
+        <omgdc:Bounds height="55.0" width="121.0" x="1050.0" y="43.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="servicetask3" id="BPMNShape_servicetask3">
-        <omgdc:Bounds height="55.0" width="121.0" x="1176.0" y="483.0"></omgdc:Bounds>
+        <omgdc:Bounds height="55.0" width="121.0" x="900.0" y="370.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="exclusivegateway2" id="BPMNShape_exclusivegateway2">
-        <omgdc:Bounds height="40.0" width="40.0" x="770.0" y="62.0"></omgdc:Bounds>
+        <omgdc:Bounds height="40.0" width="40.0" x="660.0" y="50.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="scripttask1" id="BPMNShape_scripttask1">
-        <omgdc:Bounds height="55.0" width="105.0" x="276.0" y="483.0"></omgdc:Bounds>
+        <omgdc:Bounds height="55.0" width="105.0" x="270.0" y="370.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="exclusivegateway3" id="BPMNShape_exclusivegateway3">
-        <omgdc:Bounds height="40.0" width="40.0" x="770.0" y="490.0"></omgdc:Bounds>
+        <omgdc:Bounds height="40.0" width="40.0" x="660.0" y="377.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="scripttask2" id="BPMNShape_scripttask2">
-        <omgdc:Bounds height="74.0" width="105.0" x="738.0" y="230.0"></omgdc:Bounds>
+        <omgdc:Bounds height="61.0" width="105.0" x="628.0" y="130.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="scripttask3" id="BPMNShape_scripttask3">
-        <omgdc:Bounds height="55.0" width="105.0" x="490.0" y="320.0"></omgdc:Bounds>
+        <omgdc:Bounds height="55.0" width="105.0" x="410.0" y="43.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="servicetask6" id="BPMNShape_servicetask6">
-        <omgdc:Bounds height="55.0" width="121.0" x="980.0" y="55.0"></omgdc:Bounds>
+        <omgdc:Bounds height="55.0" width="121.0" x="850.0" y="43.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="callactivity1" id="BPMNShape_callactivity1">
-        <omgdc:Bounds height="65.0" width="105.0" x="738.0" y="363.0"></omgdc:Bounds>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape bpmnElement="scripttask4" id="BPMNShape_scripttask4">
-        <omgdc:Bounds height="105.0" width="105.0" x="440.0" y="30.0"></omgdc:Bounds>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape bpmnElement="servicetask7" id="BPMNShape_servicetask7">
-        <omgdc:Bounds height="84.0" width="121.0" x="268.0" y="190.0"></omgdc:Bounds>
+        <omgdc:Bounds height="55.0" width="105.0" x="628.0" y="240.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge bpmnElement="flow36" id="BPMNEdge_flow36">
-        <omgdi:waypoint x="1297.0" y="290.0"></omgdi:waypoint>
-        <omgdi:waypoint x="1336.0" y="290.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1021.0" y="207.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1130.0" y="207.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow28" id="BPMNEdge_flow28">
-        <omgdi:waypoint x="1101.0" y="82.0"></omgdi:waypoint>
-        <omgdi:waypoint x="1176.0" y="82.0"></omgdi:waypoint>
+        <omgdi:waypoint x="971.0" y="70.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1050.0" y="70.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow27" id="BPMNEdge_flow27">
-        <omgdi:waypoint x="790.0" y="230.0"></omgdi:waypoint>
-        <omgdi:waypoint x="790.0" y="102.0"></omgdi:waypoint>
+        <omgdi:waypoint x="680.0" y="130.0"></omgdi:waypoint>
+        <omgdi:waypoint x="680.0" y="90.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow41" id="BPMNEdge_flow41">
-        <omgdi:waypoint x="1236.0" y="483.0"></omgdi:waypoint>
-        <omgdi:waypoint x="1236.0" y="318.0"></omgdi:waypoint>
+        <omgdi:waypoint x="960.0" y="370.0"></omgdi:waypoint>
+        <omgdi:waypoint x="960.0" y="235.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow25" id="BPMNEdge_flow25">
-        <omgdi:waypoint x="810.0" y="82.0"></omgdi:waypoint>
-        <omgdi:waypoint x="980.0" y="82.0"></omgdi:waypoint>
+        <omgdi:waypoint x="700.0" y="70.0"></omgdi:waypoint>
+        <omgdi:waypoint x="850.0" y="70.0"></omgdi:waypoint>
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds height="16.0" width="46.0" x="830.0" y="86.0"></omgdc:Bounds>
+          <omgdc:Bounds height="16.0" width="46.0" x="720.0" y="74.0"></omgdc:Bounds>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow42" id="BPMNEdge_flow42">
-        <omgdi:waypoint x="115.0" y="82.0"></omgdi:waypoint>
-        <omgdi:waypoint x="328.0" y="82.0"></omgdi:waypoint>
-        <omgdi:waypoint x="328.0" y="190.0"></omgdi:waypoint>
+        <omgdi:waypoint x="115.0" y="70.0"></omgdi:waypoint>
+        <omgdi:waypoint x="322.0" y="70.0"></omgdi:waypoint>
+        <omgdi:waypoint x="322.0" y="370.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow45" id="BPMNEdge_flow45">
-        <omgdi:waypoint x="810.0" y="510.0"></omgdi:waypoint>
-        <omgdi:waypoint x="1176.0" y="510.0"></omgdi:waypoint>
+        <omgdi:waypoint x="700.0" y="397.0"></omgdi:waypoint>
+        <omgdi:waypoint x="900.0" y="397.0"></omgdi:waypoint>
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds height="16.0" width="82.0" x="810.0" y="510.0"></omgdc:Bounds>
+          <omgdc:Bounds height="16.0" width="82.0" x="700.0" y="397.0"></omgdc:Bounds>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow48" id="BPMNEdge_flow48">
-        <omgdi:waypoint x="790.0" y="102.0"></omgdi:waypoint>
-        <omgdi:waypoint x="542.0" y="320.0"></omgdi:waypoint>
+        <omgdi:waypoint x="660.0" y="70.0"></omgdi:waypoint>
+        <omgdi:waypoint x="571.0" y="69.0"></omgdi:waypoint>
+        <omgdi:waypoint x="515.0" y="70.0"></omgdi:waypoint>
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds height="16.0" width="53.0" x="706.0" y="106.0"></omgdc:Bounds>
+          <omgdc:Bounds height="16.0" width="53.0" x="576.0" y="74.0"></omgdc:Bounds>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow50" id="BPMNEdge_flow50">
-        <omgdi:waypoint x="790.0" y="490.0"></omgdi:waypoint>
-        <omgdi:waypoint x="790.0" y="428.0"></omgdi:waypoint>
+        <omgdi:waypoint x="680.0" y="377.0"></omgdi:waypoint>
+        <omgdi:waypoint x="680.0" y="295.0"></omgdi:waypoint>
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds height="48.0" width="100.0" x="790.0" y="437.0"></omgdc:Bounds>
+          <omgdc:Bounds height="48.0" width="100.0" x="671.0" y="321.0"></omgdc:Bounds>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow51" id="BPMNEdge_flow51">
-        <omgdi:waypoint x="381.0" y="510.0"></omgdi:waypoint>
-        <omgdi:waypoint x="770.0" y="510.0"></omgdi:waypoint>
+        <omgdi:waypoint x="375.0" y="397.0"></omgdi:waypoint>
+        <omgdi:waypoint x="660.0" y="397.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow53" id="BPMNEdge_flow53">
-        <omgdi:waypoint x="490.0" y="347.0"></omgdi:waypoint>
-        <omgdi:waypoint x="328.0" y="347.0"></omgdi:waypoint>
-        <omgdi:waypoint x="328.0" y="483.0"></omgdi:waypoint>
+        <omgdi:waypoint x="410.0" y="70.0"></omgdi:waypoint>
+        <omgdi:waypoint x="322.0" y="70.0"></omgdi:waypoint>
+        <omgdi:waypoint x="322.0" y="370.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow54" id="BPMNEdge_flow54">
-        <omgdi:waypoint x="790.0" y="363.0"></omgdi:waypoint>
-        <omgdi:waypoint x="790.0" y="304.0"></omgdi:waypoint>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge bpmnElement="flow55" id="BPMNEdge_flow55">
-        <omgdi:waypoint x="770.0" y="82.0"></omgdi:waypoint>
-        <omgdi:waypoint x="545.0" y="82.0"></omgdi:waypoint>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds height="48.0" width="100.0" x="617.0" y="50.0"></omgdc:Bounds>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge bpmnElement="flow56" id="BPMNEdge_flow56">
-        <omgdi:waypoint x="440.0" y="82.0"></omgdi:waypoint>
-        <omgdi:waypoint x="328.0" y="82.0"></omgdi:waypoint>
-        <omgdi:waypoint x="328.0" y="190.0"></omgdi:waypoint>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge bpmnElement="flow57" id="BPMNEdge_flow57">
-        <omgdi:waypoint x="328.0" y="274.0"></omgdi:waypoint>
-        <omgdi:waypoint x="328.0" y="483.0"></omgdi:waypoint>
+        <omgdi:waypoint x="680.0" y="240.0"></omgdi:waypoint>
+        <omgdi:waypoint x="680.0" y="191.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
