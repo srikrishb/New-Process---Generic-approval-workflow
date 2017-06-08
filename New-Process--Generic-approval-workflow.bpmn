@@ -21,11 +21,12 @@
         <flowNodeRef>callactivity1</flowNodeRef>
         <flowNodeRef>scripttask4</flowNodeRef>
         <flowNodeRef>servicetask7</flowNodeRef>
+        <flowNodeRef>usertask1</flowNodeRef>
       </lane>
     </laneSet>
     <startEvent id="startevent1" name="Start" activiti:initiator="startUser">
       <extensionElements>
-        <activiti:formProperty id="userExpression" name="User Expression to capture the role" type="string" default="role(Steward)" readable="false"></activiti:formProperty>
+        <activiti:formProperty id="userExpression" name="User Expression to capture the role" type="string" default="None" readable="false"></activiti:formProperty>
         <activiti:formProperty id="voteWarningTimeDuration" name="Please enter time duration before a voting reminder is send" type="string" default="B5D" readable="false"></activiti:formProperty>
         <activiti:formProperty id="voteTimeoutDuration" name="Timeout before voting process is forced to continue" type="string" default="B7D" readable="false"></activiti:formProperty>
         <activiti:formProperty id="voteCompletionPercentage" name="Percentage required to vote before completion" type="long" default="100" readable="false"></activiti:formProperty>
@@ -36,10 +37,11 @@
         <activiti:formProperty id="sendVotingActionEmails" name="Send an action email to users that are required to vote in the process" type="boolean" default="true" readable="false"></activiti:formProperty>
         <activiti:formProperty id="count" type="string" default="0" readable="false"></activiti:formProperty>
         <activiti:formProperty id="totalCount" type="long" default="0" readable="false"></activiti:formProperty>
-        <activiti:formProperty id="approvers" name="Please select the approvers" type="role" required="true">
-          <activiti:value id="multivalue" name="True"></activiti:value>
-        </activiti:formProperty>
+        <activiti:formProperty id="approvers" name="Please select the approvers" type="string" default="role(Business Steward)" readable="false"></activiti:formProperty>
         <activiti:formProperty id="nextApprover" type="string" default="false" readable="false"></activiti:formProperty>
+        <activiti:formProperty id="approvestatus" name="approvestatus" type="string" default="false" readable="false"></activiti:formProperty>
+        <activiti:formProperty id="rejectstatus" name="rejectstatus" type="string" default="false" readable="false"></activiti:formProperty>
+        <activiti:formProperty id="reqmoreinfostatus" name="reqmoreinfostatus" type="string" default="false" readable="false"></activiti:formProperty>
       </extensionElements>
     </startEvent>
     <serviceTask id="servicetask4" name="Notify Start User" activiti:class="com.collibra.dgc.core.workflow.activiti.delegate.MailSender">
@@ -76,7 +78,7 @@
     <sequenceFlow id="flow41" sourceRef="servicetask3" targetRef="servicetask4"></sequenceFlow>
     <exclusiveGateway id="exclusivegateway2" name="Exclusive Gateway"></exclusiveGateway>
     <sequenceFlow id="flow25" name="rejected" sourceRef="exclusivegateway2" targetRef="servicetask6">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reject == true}]]></conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${rejectstatus == true}]]></conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow42" sourceRef="startevent1" targetRef="servicetask7"></sequenceFlow>
     <scriptTask id="scripttask1" name="Initialize process" scriptFormat="groovy" activiti:autoStoreVariables="false">
@@ -138,25 +140,36 @@ loggerComponent.info('nextApprover contains: ' + nextApprover)</script>
 loggerComponent.info('temp_count contains: ' + temp_count)
 def int_temp_count = temp_count.toInteger()?temp_count.toInteger():0
 
-if ( String.valueOf(approve) == 'true')
+if ( String.valueOf(approve) == 'true' || count == -1 )
 {
+	execution.setVariable('approvestatus', 'true')
+	execution.setVariable('reqmoreinfostatus', 'false')
+	execution.setVariable('rejectstatus', 'false')
 	int_temp_count = int_temp_count + 1
 	loggerComponent.info('int_temp_count contains: ' + int_temp_count)
 	execution.setVariable('count', int_temp_count)
 }
-
+else
+{
+	execution.setVariable('reqmoreinfostatus', String.valueOf(request))
+	execution.setVariable('approvestatus', String.valueOf(approve))
+	execution.setVariable('rejectstatus', String.valueOf(reject))
+}
 loggerComponent.info('Count: '+ count)
-loggerComponent.info('votingResult  contains: ' + votingResult)
-loggerComponent.info('votingResult.votingResult  contains: ' + votingResult.votingResult)
-loggerComponent.info('requestForMoreInfo  contains: ' + requestForMoreInfo)
+
+loggerComponent.info('request  contains: ' + request)
 loggerComponent.info('approve  contains: ' + approve)
-loggerComponent.info('reject  contains: ' + reject)</script>
+loggerComponent.info('reject  contains: ' + reject)
+
+loggerComponent.info('reqmoreinfostatus  contains: ' + reqmoreinfostatus)
+loggerComponent.info('approvestatus  contains: ' + approvestatus)
+loggerComponent.info('rejectstatus  contains: ' + rejectstatus)</script>
     </scriptTask>
     <sequenceFlow id="flow48" name="accepted" sourceRef="exclusivegateway2" targetRef="scripttask3">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approve == true}]]></conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approvestatus == true}]]></conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow50" name="Pass to Approvers" sourceRef="exclusivegateway3" targetRef="callactivity1">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${nextApprover == true}]]></conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${nextApprover == true && count > -1}]]></conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow51" sourceRef="scripttask1" targetRef="exclusivegateway3"></sequenceFlow>
     <scriptTask id="scripttask3" name="Accepted" scriptFormat="groovy" activiti:autoStoreVariables="false">
@@ -185,7 +198,7 @@ loggerComponent.info('Result: ' +votingResult.votingResult)</script>
         <activiti:in source="activityFilter" target="activityFilter"></activiti:in>
         <activiti:in source="sendVotingActionEmails" target="sendActionEmail"></activiti:in>
         <activiti:out source="votingResult" target="votingResult"></activiti:out>
-        <activiti:out source="requestForMoreInfo" target="requestForMoreInfo"></activiti:out>
+        <activiti:out source="requestForMoreInfo" target="request"></activiti:out>
         <activiti:out source="reject" target="reject"></activiti:out>
         <activiti:out source="approve" target="approve"></activiti:out>
         <activiti:executionListener event="start" class="com.collibra.dgc.core.workflow.activiti.listener.SetActivityStreamListener">
@@ -199,7 +212,7 @@ loggerComponent.info('Result: ' +votingResult.votingResult)</script>
       </extensionElements>
     </callActivity>
     <sequenceFlow id="flow54" sourceRef="callactivity1" targetRef="scripttask2"></sequenceFlow>
-    <scriptTask id="scripttask4" name="Request for more info" scriptFormat="groovy" activiti:autoStoreVariables="false">
+    <scriptTask id="scripttask4" name="Request for more info operation" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>loggerComponent.info('Requested for more info')
 
 def temp_count = -1
@@ -209,7 +222,7 @@ execution.setVariable('count', temp_count)
 loggerComponent.info('Count: '+ count)</script>
     </scriptTask>
     <sequenceFlow id="flow55" name="request for more info" sourceRef="exclusivegateway2" targetRef="scripttask4">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${requestForMoreInfo == true}]]></conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reqmoreinfostatus == true}]]></conditionExpression>
     </sequenceFlow>
     <serviceTask id="servicetask7" name="Mark as &quot;In Progress&quot;" activiti:class="com.collibra.dgc.core.workflow.activiti.delegate.ChangeStatusDelegate">
       <extensionElements>
@@ -220,6 +233,17 @@ loggerComponent.info('Count: '+ count)</script>
     </serviceTask>
     <sequenceFlow id="flow56" sourceRef="scripttask4" targetRef="servicetask7"></sequenceFlow>
     <sequenceFlow id="flow57" sourceRef="servicetask7" targetRef="scripttask1"></sequenceFlow>
+    <userTask id="usertask1" name="Requested More Info from Start User" activiti:candidateUsers="user(${startUser})">
+      <documentation>Please contact the person who requested for more information and provide it ASAP.</documentation>
+      <extensionElements>
+        <activiti:formProperty id="comment" name="Comments if any" type="textarea"></activiti:formProperty>
+        <activiti:formProperty id="reqmoreinfoButton" name="Provide information" type="taskButton"></activiti:formProperty>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="flow58" name="Request for more info" sourceRef="exclusivegateway3" targetRef="usertask1">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${nextApprover == true && count == -1}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow59" sourceRef="usertask1" targetRef="scripttask2"></sequenceFlow>
   </process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_Collaboration">
     <bpmndi:BPMNPlane bpmnElement="Collaboration" id="BPMNPlane_Collaboration">
@@ -270,6 +294,9 @@ loggerComponent.info('Count: '+ count)</script>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="servicetask7" id="BPMNShape_servicetask7">
         <omgdc:Bounds height="84.0" width="121.0" x="268.0" y="190.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="usertask1" id="BPMNShape_usertask1">
+        <omgdc:Bounds height="78.0" width="105.0" x="1030.0" y="307.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge bpmnElement="flow36" id="BPMNEdge_flow36">
         <omgdi:waypoint x="1297.0" y="290.0"></omgdi:waypoint>
@@ -348,6 +375,20 @@ loggerComponent.info('Count: '+ count)</script>
       <bpmndi:BPMNEdge bpmnElement="flow57" id="BPMNEdge_flow57">
         <omgdi:waypoint x="328.0" y="274.0"></omgdi:waypoint>
         <omgdi:waypoint x="328.0" y="483.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow58" id="BPMNEdge_flow58">
+        <omgdi:waypoint x="790.0" y="490.0"></omgdi:waypoint>
+        <omgdi:waypoint x="891.0" y="467.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1080.0" y="467.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1082.0" y="385.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="48.0" width="100.0" x="910.0" y="436.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow59" id="BPMNEdge_flow59">
+        <omgdi:waypoint x="1082.0" y="307.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1081.0" y="267.0"></omgdi:waypoint>
+        <omgdi:waypoint x="843.0" y="267.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
