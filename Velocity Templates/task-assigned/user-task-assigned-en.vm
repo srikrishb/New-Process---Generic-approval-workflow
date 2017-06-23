@@ -1,0 +1,28 @@
+<tr>
+	<td>
+		<table>
+            <tbody>
+				<tr>
+					<td>
+						#if ($user.isGuestUser())
+							#set($url = $item.url + '?signinrequired=false&task-id=' + $task.getId() + '&user-id=' + $user.getId())
+						#else
+							#set($url = $item.url + '?signinrequired=true&task-id=' + $task.getId())
+						#end
+						Dear $user.getFullName(),
+						#if ($voterUserExpression.equals('role(Business Steward)'))
+							You are the steward of the community. Please approve the asset per Steward policies.
+						#elseif ($voterUserExpression.equals('role(Stakeholder)'))
+							You are the stakeholder of the community. Please consult other stakeholders about this asset and approve the same.
+						#elseif ($voterUserExpression.equals('role(Chief Data Officer)'))
+							You are the CDO.  Please approve the asset.
+						#end	
+						A new <a href="$url">$task.title</a> task has been assigned to you.
+						#if ($item.id) The associated business item is <a href="$item.url">$item.name</a>.#end
+						#if ($task.description) $task.description #end
+                	</td>
+                </tr>
+			</tbody>
+		</table>
+	</td>
+</tr>
