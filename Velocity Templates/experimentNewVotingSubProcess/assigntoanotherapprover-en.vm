@@ -1,1 +1,0 @@
-<tr><td>A voting for <a href='$item.url'>$item.name</a> has finished with result: #if ($votingResult.votingResult) 'Approved'. #else 'Rejected'. #end</td></tr> 

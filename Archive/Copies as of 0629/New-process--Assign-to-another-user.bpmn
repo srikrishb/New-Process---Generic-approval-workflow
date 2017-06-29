@@ -26,6 +26,7 @@
     </startEvent>
     <scriptTask id="scripttask2" name="Determine and assign new user" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>/*Display contents of approvers to understand who the approvers are. */
+loggerComponent.info('Kicked off a different workflow')
 loggerComponent.info('Approvers are: ' + approvers)
 
 loggerComponent.info('newApprover contains: ' + newApprover)
@@ -50,22 +51,18 @@ for (i = 0 ; i &lt; occurance; i++)
 		break
 	}
 	
-	temp_approver = ''
 }
 
-loggerComponent.info('New count contains: ' + count)
-
-</script>
+loggerComponent.info('New count contains: ' + count)</script>
     </scriptTask>
     <sequenceFlow id="flow1" sourceRef="usertask1" targetRef="scripttask2"></sequenceFlow>
     <endEvent id="endevent2" name="End"></endEvent>
     <sequenceFlow id="flow2" sourceRef="scripttask2" targetRef="endevent2"></sequenceFlow>
     <userTask id="usertask1" name="Please select an approver to whom the workflow needs to be assigned." activiti:candidateUsers="user(${voter})">
       <extensionElements>
-        <activiti:formProperty id="rolesDisplayed" name="Roles to be Displayed" type="role" variable="newApprover" required="true">
-          <activiti:value id="proposedFixed" name="true"></activiti:value>
-          <activiti:value id="multiValue" name="false"></activiti:value>
+        <activiti:formProperty id="rolesDisplayed" name="Roles to be Displayed" type="role" variable="newApprover" default="${assignToAnotherApproverList}" required="true">
           <activiti:value id="proposedValues" name="${assignToAnotherApproverList}"></activiti:value>
+          <activiti:value id="proposedFixed" name="true"></activiti:value>
         </activiti:formProperty>
       </extensionElements>
       <multiInstanceLoopCharacteristics isSequential="false" activiti:collection="voters" activiti:elementVariable="voter">
