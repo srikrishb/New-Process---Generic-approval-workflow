@@ -191,13 +191,7 @@ loggerComponent.info('resultTemplate  contains: ' + resultTemplate)</script>
     <scriptTask id="scripttask2" name="Initialize process" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>loggerComponent.info('Count contains: ' + count)
 
-def temp_count = execution.getVariable('count')
-loggerComponent.info('temp_count contains: ' + temp_count)
-
-def int_temp_count = temp_count.toInteger()?temp_count.toInteger():0
-loggerComponent.info('int_temp_count contains: ' + int_temp_count)
-
-if ( int_temp_count == 0 )
+if ( execution.getVariable('count') == 0 )
 {
 	execution.setVariable('checkLevel', 'false')
 }
@@ -318,7 +312,7 @@ loggerComponent.info('checkLevel contains: ' + checkLevel)</script>
         <omgdi:waypoint x="279.0" y="200.0"></omgdi:waypoint>
         <omgdi:waypoint x="380.0" y="200.0"></omgdi:waypoint>
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds height="16.0" width="66.0" x="261.0" y="153.0"></omgdc:Bounds>
+          <omgdc:Bounds height="16.0" width="100.0" x="261.0" y="153.0"></omgdc:Bounds>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow23" id="BPMNEdge_flow23">
