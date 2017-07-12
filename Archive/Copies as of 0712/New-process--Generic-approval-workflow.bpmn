@@ -44,7 +44,6 @@
         <activiti:formProperty id="rejectstatus" name="rejectstatus" type="string" default="false" readable="false"></activiti:formProperty>
         <activiti:formProperty id="reqmoreinfostatus" name="reqmoreinfostatus" type="string" default="false" readable="false"></activiti:formProperty>
         <activiti:formProperty id="assignToAnotherApproverList" name="assignToAnotherApproverList" type="string" default="false" readable="false"></activiti:formProperty>
-        <activiti:formProperty id="paramFilePath" name="Path of the parameter file" type="string" default="None" readable="false" required="true"></activiti:formProperty>
       </extensionElements>
     </startEvent>
     <serviceTask id="servicetask4" name="Notify Start User" activiti:class="com.collibra.dgc.core.workflow.activiti.delegate.MailSender">
@@ -132,44 +131,7 @@ else
 loggerComponent.info('setVariable_userExpression contains: ' + setVariable_userExpression)
 execution.setVariable('userExpression', setVariable_userExpression)
 loggerComponent.info('userExpression contains: ' + userExpression)
-loggerComponent.info('nextApprover contains: ' + nextApprover)
-
-def assetCommunity = communityComponent.getCommunity(item.getCommunity()).getName()
-def assetDomain = vocabularyComponent.getVocabulary(item.getVocabulary()).getName()
-def assetType = item.getConceptTypeName()
-
-/*Read data from parameter file*/
-File temp_paramFile = new File(paramFilePath)
-def jsonText = temp_paramFile.getText()
-def roleMsgMap, roleMsg
-
-/*Define JSON slurper to parse JSON Data */
-def slurper = new groovy.json.JsonSlurper()
-def resultText = slurper.parseText(jsonText)
-
-/*Fetch the result size*/
-def resultSize = resultText.size()
-
-/*Fetch the result keys*/
-def resultKeys = resultText.keySet()
-
-/*Fetch the result values and compare them with item's values*/
-for ( i = 0 ; i &lt; resultSize ; i++)
-{
-	def resultValue = resultText.get(resultKeys[i])
-	def resultCommunity = resultValue.get("Community")
-	def resultDomain = resultValue.get("Domain")
-	def resultType = resultValue.get("ConceptType")
-	
-	if ( assetCommunity == resultCommunity &amp;&amp; assetDomain == resultDomain &amp;&amp; assetType == resultType) 
-	{
-		roleMsgMap = resultValue.get("RoleMsgMap")
-		loggerComponent.info('roleMsgMap ' + roleMsgMap)
-		roleMsg = roleMsgMap.get(approverName)
-		loggerComponent.info('roleMsg ' + roleMsg)
-		break
-	}
-}</script>
+loggerComponent.info('nextApprover contains: ' + nextApprover)</script>
     </scriptTask>
     <exclusiveGateway id="exclusivegateway3" name="Exclusive Gateway"></exclusiveGateway>
     <sequenceFlow id="flow45" name="Approve asset" sourceRef="exclusivegateway3" targetRef="servicetask3">
