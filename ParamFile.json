@@ -1,0 +1,25 @@
+{
+"ApproverList1":
+	{
+		"Community":"CCAR Reporting Community",
+		"Domain":"Financial Reporting Codelist",
+		"ConceptType":"Code Set",
+		"ApproverRoles":"Business Steward",
+		"RoleMsgMap":
+		{
+			"Business Steward": "Dear Steward, Sample Message1."
+		}
+	},
+"ApproverList2":
+	{
+		"Community":"CCAR Reporting Community",
+		"Domain":"Financial Reporting Codelist",
+		"ConceptType":"Code Value",
+		"ApproverRoles":"Business Steward, Chief Data Officer",
+		"RoleMsgMap":
+		{
+			"Business Steward": "Dear Steward, Sample Message 2.",
+			"Chief Data Officer":"Dear CDO, This Code Value must be approved per code value rules.",
+		}
+	}
+}

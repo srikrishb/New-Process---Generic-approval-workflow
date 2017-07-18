@@ -45,6 +45,8 @@
         <activiti:formProperty id="reqmoreinfostatus" name="reqmoreinfostatus" type="string" default="false" readable="false"></activiti:formProperty>
         <activiti:formProperty id="assignToAnotherApproverList" name="assignToAnotherApproverList" type="string" default="false" readable="false"></activiti:formProperty>
         <activiti:formProperty id="paramFilePath" name="Path of the parameter file" type="string" default="None" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="roleMsg" name="Message to be sent for a role approver" type="string" default="None" readable="false"></activiti:formProperty>
+        <activiti:formProperty id="buttonName" name="Dynamic button" type="string" default="Nothing" readable="false" required="true"></activiti:formProperty>
       </extensionElements>
     </startEvent>
     <serviceTask id="servicetask4" name="Notify Start User" activiti:class="com.collibra.dgc.core.workflow.activiti.delegate.MailSender">
@@ -84,13 +86,54 @@
     </sequenceFlow>
     <sequenceFlow id="flow42" sourceRef="startevent1" targetRef="servicetask7"></sequenceFlow>
     <scriptTask id="scripttask1" name="Initialize process" scriptFormat="groovy" activiti:autoStoreVariables="false">
-      <script>/*Display contents of approvers to understand who the approvers are. */
-loggerComponent.info('Approvers are: ' + approvers)
+      <script>def assetCommunity = communityComponent.getCommunity(item.getCommunity()).getName()
+def assetDomain = vocabularyComponent.getVocabulary(item.getVocabulary()).getName()
+def assetType = item.getConceptTypeName()
+
+/*Read data from parameter file*/
+File temp_paramFile = new File(paramFilePath)
+def jsonText = temp_paramFile.getText()
+def temp_roleMsgMap, temp_roleMsg, temp_approversList, resultValue, resultCommunity, resultDomain, resultType
+
+/*Define JSON slurper to parse JSON Data */
+def slurper = new groovy.json.JsonSlurper()
+def resultText = slurper.parseText(jsonText)
+
+/*Fetch the result size*/
+def resultSize = resultText.size()
+
+/*Fetch the result keys*/
+def resultKeys = resultText.keySet()
+
+/*Fetch the result values and the approvers list*/
+for ( i = 0 ; i &lt; resultSize ; i++)
+{
+	resultValue = resultText.get(resultKeys[i])
+	resultCommunity = resultValue.get("Community")
+	resultDomain = resultValue.get("Domain")
+	resultType = resultValue.get("ConceptType")
+	
+	if ( assetCommunity == resultCommunity &amp;&amp; assetDomain == resultDomain &amp;&amp; assetType == resultType) 
+	{
+		/*Fetch the approvers from the parameter file*/
+		temp_approversList = resultValue.get("ApproverRoles")
+		loggerComponent.info('temp_approversList ' + temp_approversList)
+		
+		/*Fetch the customized messages for all the approvers from the parameter file*/
+		temp_roleMsgMap = resultValue.get("RoleMsgMap")
+		loggerComponent.info('temp_roleMsgMap ' + temp_roleMsgMap)
+		break
+	}
+}
+
+
+/*Display contents of approvers to understand who the approvers are. */
+loggerComponent.info('Approvers are: ' + temp_approversList)
 
 /*Convert String to a List.*/
-def approversList = approvers.split(',')
+def approversList = temp_approversList.split(',')
 
-int occurance = approvers.count(",")
+int occurance = temp_approversList.count(",")
 
 /*Increment occurance count to understand total number of approvers. */
 occurance = occurance + 1
@@ -134,41 +177,17 @@ execution.setVariable('userExpression', setVariable_userExpression)
 loggerComponent.info('userExpression contains: ' + userExpression)
 loggerComponent.info('nextApprover contains: ' + nextApprover)
 
-def assetCommunity = communityComponent.getCommunity(item.getCommunity()).getName()
-def assetDomain = vocabularyComponent.getVocabulary(item.getVocabulary()).getName()
-def assetType = item.getConceptTypeName()
+/*Find the relevant message for the approver */
+temp_roleMsg = temp_roleMsgMap.get(approverName)
+loggerComponent.info('temp_roleMsg ' + temp_roleMsg)
 
-/*Read data from parameter file*/
-File temp_paramFile = new File(paramFilePath)
-def jsonText = temp_paramFile.getText()
-def roleMsgMap, roleMsg
+/*Assign the relevant message to the universal variable*/
+execution.setVariable('roleMsg', temp_roleMsg)
+loggerComponent.info('roleMsg ' + roleMsg)
 
-/*Define JSON slurper to parse JSON Data */
-def slurper = new groovy.json.JsonSlurper()
-def resultText = slurper.parseText(jsonText)
-
-/*Fetch the result size*/
-def resultSize = resultText.size()
-
-/*Fetch the result keys*/
-def resultKeys = resultText.keySet()
-
-/*Fetch the result values and compare them with item's values*/
-for ( i = 0 ; i &lt; resultSize ; i++)
+if ( approverName == 'Business Steward')
 {
-	def resultValue = resultText.get(resultKeys[i])
-	def resultCommunity = resultValue.get("Community")
-	def resultDomain = resultValue.get("Domain")
-	def resultType = resultValue.get("ConceptType")
-	
-	if ( assetCommunity == resultCommunity &amp;&amp; assetDomain == resultDomain &amp;&amp; assetType == resultType) 
-	{
-		roleMsgMap = resultValue.get("RoleMsgMap")
-		loggerComponent.info('roleMsgMap ' + roleMsgMap)
-		roleMsg = roleMsgMap.get(approverName)
-		loggerComponent.info('roleMsg ' + roleMsg)
-		break
-	}
+	execution.setVariable('buttonName', 'Ignore this button')
 }</script>
     </scriptTask>
     <exclusiveGateway id="exclusivegateway3" name="Exclusive Gateway"></exclusiveGateway>
@@ -203,19 +222,14 @@ for ( i = 0 ; i &lt; resultSize ; i++)
         <activiti:in source="activityFilter" target="activityFilter"></activiti:in>
         <activiti:in source="sendVotingActionEmails" target="sendActionEmail"></activiti:in>
         <activiti:in source="count" target="count"></activiti:in>
+        <activiti:in source="roleMsg" target="roleMsg"></activiti:in>
+        <activiti:in source="buttonName" target="buttonName"></activiti:in>
         <activiti:out source="votingResult" target="votingResult"></activiti:out>
         <activiti:out source="requestForMoreInfo" target="request"></activiti:out>
         <activiti:out source="reject" target="reject"></activiti:out>
         <activiti:out source="approve" target="approvestatus"></activiti:out>
         <activiti:out source="assignToAnotherApprover" target="assignToAnotherApprover"></activiti:out>
-        <activiti:executionListener event="start" class="com.collibra.dgc.core.workflow.activiti.listener.SetActivityStreamListener">
-          <activiti:field name="startOnStatusChangeFrom">
-            <activiti:string><![CDATA[Accepted]]></activiti:string>
-          </activiti:field>
-          <activiti:field name="resourceTypes">
-            <activiti:string><![CDATA[AT]]></activiti:string>
-          </activiti:field>
-        </activiti:executionListener>
+        <activiti:executionListener event="start" class="com.collibra.dgc.core.workflow.activiti.listener.SetActivityStreamListener"></activiti:executionListener>
       </extensionElements>
     </callActivity>
     <sequenceFlow id="flow55" name="request for more info from user" sourceRef="exclusivegateway2" targetRef="usertask1">
@@ -234,6 +248,7 @@ for ( i = 0 ; i &lt; resultSize ; i++)
       <extensionElements>
         <activiti:formProperty id="commentReqMoreInfo" name="Comments if any" type="textarea"></activiti:formProperty>
         <activiti:formProperty id="reqmoreinfoButton" name="Provide information" type="taskButton"></activiti:formProperty>
+        <activiti:executionListener event="start" class="com.collibra.dgc.core.workflow.activiti.listener.SetActivityStreamListener"></activiti:executionListener>
       </extensionElements>
     </userTask>
     <sequenceFlow id="flow59" sourceRef="scripttask4" targetRef="callactivity1"></sequenceFlow>
@@ -242,6 +257,7 @@ for ( i = 0 ; i &lt; resultSize ; i++)
         <activiti:field name="comment">
           <activiti:expression><![CDATA[${commentReqMoreInfo}]]></activiti:expression>
         </activiti:field>
+        <activiti:executionListener event="start" class="com.collibra.dgc.core.workflow.activiti.listener.SetActivityStreamListener"></activiti:executionListener>
       </extensionElements>
     </serviceTask>
     <sequenceFlow id="flow60" sourceRef="usertask1" targetRef="servicetask8"></sequenceFlow>
@@ -284,7 +300,12 @@ loggerComponent.info('Approvers contains: ' + approvers)</script>
     <sequenceFlow id="flow64" sourceRef="callactivity2" targetRef="scripttask1"></sequenceFlow>
     <scriptTask id="scripttask4" name="Clear Comment Variable" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>execution.setVariable('commentReqMoreInfo', '')
-loggerComponent.info('commentReqMoreInfo contains: ' + commentReqMoreInfo)</script>
+loggerComponent.info('commentReqMoreInfo contains: ' + commentReqMoreInfo)
+
+loggerComponent.info('Activity Desription contains: ' + activity.getDescription())
+loggerComponent.info('Activity Context contains: ' + activity.getContext())
+loggerComponent.info('Activity JSON Desription contains: ' + activity.getJsonDescription())
+loggerComponent.info('Activity Timestamp contains: ' + activity.getTimestamp())</script>
     </scriptTask>
     <sequenceFlow id="flow66" sourceRef="servicetask8" targetRef="scripttask4"></sequenceFlow>
     <callActivity id="callactivity2" name="Assign to new approver" calledElement="experimentAssignToAnotherApproverProcess">
@@ -333,7 +354,7 @@ loggerComponent.info('commentReqMoreInfo contains: ' + commentReqMoreInfo)</scri
         <omgdc:Bounds height="55.0" width="121.0" x="980.0" y="30.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="callactivity1" id="BPMNShape_callactivity1">
-        <omgdc:Bounds height="65.0" width="105.0" x="688.0" y="460.0"></omgdc:Bounds>
+        <omgdc:Bounds height="65.0" width="105.0" x="688.0" y="455.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="servicetask7" id="BPMNShape_servicetask7">
         <omgdc:Bounds height="66.0" width="121.0" x="160.0" y="97.0"></omgdc:Bounds>
@@ -394,7 +415,7 @@ loggerComponent.info('commentReqMoreInfo contains: ' + commentReqMoreInfo)</scri
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow50" id="BPMNEdge_flow50">
         <omgdi:waypoint x="740.0" y="687.0"></omgdi:waypoint>
-        <omgdi:waypoint x="740.0" y="525.0"></omgdi:waypoint>
+        <omgdi:waypoint x="740.0" y="520.0"></omgdi:waypoint>
         <bpmndi:BPMNLabel>
           <omgdc:Bounds height="48.0" width="100.0" x="737.0" y="581.0"></omgdc:Bounds>
         </bpmndi:BPMNLabel>
@@ -418,14 +439,14 @@ loggerComponent.info('commentReqMoreInfo contains: ' + commentReqMoreInfo)</scri
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow59" id="BPMNEdge_flow59">
         <omgdi:waypoint x="986.0" y="493.0"></omgdi:waypoint>
-        <omgdi:waypoint x="793.0" y="492.0"></omgdi:waypoint>
+        <omgdi:waypoint x="793.0" y="487.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow60" id="BPMNEdge_flow60">
         <omgdi:waypoint x="1048.0" y="267.0"></omgdi:waypoint>
         <omgdi:waypoint x="1048.0" y="315.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow61" id="BPMNEdge_flow61">
-        <omgdi:waypoint x="740.0" y="460.0"></omgdi:waypoint>
+        <omgdi:waypoint x="740.0" y="455.0"></omgdi:waypoint>
         <omgdi:waypoint x="740.0" y="149.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow62" id="BPMNEdge_flow62">

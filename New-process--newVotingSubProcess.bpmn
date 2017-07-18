@@ -18,7 +18,9 @@
         <activiti:formProperty id="resultTemplate" name="Email template for sending voting result" type="string" default="result"></activiti:formProperty>
         <activiti:formProperty id="reminderTemplate" name="Email template for sending voting reminder" type="string" default="reminder"></activiti:formProperty>
         <activiti:formProperty id="count" name="Position" type="string" required="true"></activiti:formProperty>
+        <activiti:formProperty id="roleMsg" name="Message for the role approver" type="string" required="true"></activiti:formProperty>
         <activiti:formProperty id="checkLevel" name="Check whether the workflow is at level 1." default="true" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="buttonName" name="Name of button" type="string" required="true"></activiti:formProperty>
       </extensionElements>
     </startEvent>
     <subProcess id="voteSubProcess" name="Vote ">
@@ -123,7 +125,7 @@ loggerComponent.info('resultTemplate  contains: ' + resultTemplate)</script>
           <activiti:formProperty id="approve" name="Approve" type="button" default="false" required="true"></activiti:formProperty>
           <activiti:formProperty id="reject" name="Reject" type="button" default="false" required="true"></activiti:formProperty>
           <activiti:formProperty id="requestForMoreInfo" name="Request for more Info" type="button" default="false" required="true"></activiti:formProperty>
-          <activiti:formProperty id="assignToAnotherApprover" name="Assign To Another Approver" type="button" default="false" readable="false"></activiti:formProperty>
+          <activiti:formProperty id="assignToAnotherApprover" name="${buttonName}" type="button" default="false" required="true"></activiti:formProperty>
           <activiti:formProperty id="voteButton" name="${voteButtonLabel}" type="taskButton" writable="false"></activiti:formProperty>
           <activiti:taskListener event="create" class="com.collibra.dgc.core.workflow.activiti.tasklistener.ActionMailSender">
             <activiti:field name="executeIfTrue">
