@@ -4,7 +4,7 @@
 		"Community":"CCAR Reporting Community",
 		"Domain":"Financial Reporting Codelist",
 		"ConceptType":"Code Set",
-		"ApproverRoles":"Business Steward, Subject Matter Expert,Chief Data Officer",
+		"ApproverRoles":"Business Steward, Subject Matter Expert",
 		"RoleMsgMap":
 		{
 			"Business Steward": "Dear Steward, Sample Message1."
